@@ -1,0 +1,119 @@
+#+Title: CFEngine Chkconfig
+
+Policy to manage runlevels with chkconfig.
+
+* bundle agent chkconfig
+
+Manage a single service with a simple data structure.
+
+#+BEGIN_SRC cfengine3
+bundle agent example_chkconfig
+{
+  vars:
+
+      "sshd_runlevels"
+      data => '
+{
+      "1":"off",
+      "2":"on",
+      "3":"on",
+      "4":"on",
+      "5":"on",
+      "6":"off"
+}';
+
+  methods:
+
+      "Ensure sshd starts and stops at appropriate runlevels"
+      usebundle => chkconfig( "sshd", @(sshd_runlevels) );
+}
+#+END_SRC
+
+#+Caption: Example output
+#+BEGIN_EXAMPLE
+[root@hub masterfiles]# chkconfig sshd --list
+sshd           	0:off	1:off	2:on	3:off	4:on	5:off	6:off
+
+[root@hub masterfiles]# cf-agent -KIf ./promises.cf 
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 3 on'
+    info: Completed execution of '/sbin/chkconfig sshd --level 3 on'
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 5 on'
+    info: Completed execution of '/sbin/chkconfig sshd --level 5 on'
+
+[root@hub masterfiles]# chkconfig --list sshd
+sshd           	0:off	1:off	2:on	3:on	4:on	5:on	6:off
+#+END_EXAMPLE
+* bundle agent bulk_chkconfig
+
+Manage many services at once with a slightly more complex data structure.
+
+#+BEGIN_SRC cfengine3
+bundle agent example_bulk_chkconfig
+{
+  vars:
+
+      "bulk_chkconfig" data => '
+[
+      {
+        "name":"cfengine3",
+        "runlevel_1":"off",
+        "runlevel_2":"off",
+        "runlevel_3":"on",
+        "runlevel_4":"on",
+        "runlevel_5":"on",
+        "runlevel_6":"off"
+      },
+      {
+        "name":"sshd",
+        "runlevel_1":"off",
+        "runlevel_2":"off",
+        "runlevel_3":"off",
+        "runlevel_4":"off",
+        "runlevel_5":"off",
+        "runlevel_6":"off"
+      }
+]';
+
+  methods:
+
+      "Ensure various services start and stop at appropriate runlevels"
+      usebundle => bulk_chkconfig( @(bulk_chkconfig) );
+}
+#+END_SRC
+
+#+Caption: Example output
+#+BEGIN_EXAMPLE
+[root@hub masterfiles]# chkconfig --list sshd
+sshd           	0:off	1:on	2:on	3:off	4:on	5:off	6:on
+
+[root@hub masterfiles]# chkconfig --list cfengine3
+cfengine3      	0:off	1:off	2:on	3:off	4:on	5:off	6:off
+
+[root@hub masterfiles]# cf-agent -KIf ./promises.cf 
+    info: Executing 'no timeout' ... '/sbin/chkconfig cfengine3 --level 2 off'
+    info: Completed execution of '/sbin/chkconfig cfengine3 --level 2 off'
+    info: Executing 'no timeout' ... '/sbin/chkconfig cfengine3 --level 3 on'
+    info: Completed execution of '/sbin/chkconfig cfengine3 --level 3 on'
+    info: Executing 'no timeout' ... '/sbin/chkconfig cfengine3 --level 5 on'
+    info: Completed execution of '/sbin/chkconfig cfengine3 --level 5 on'
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 1 off'
+    info: Completed execution of '/sbin/chkconfig sshd --level 1 off'
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 2 off'
+    info: Completed execution of '/sbin/chkconfig sshd --level 2 off'
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 3 on'
+    info: Completed execution of '/sbin/chkconfig sshd --level 3 on'
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 4 off'
+    info: Completed execution of '/sbin/chkconfig sshd --level 4 off'
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 5 on'
+    info: Completed execution of '/sbin/chkconfig sshd --level 5 on'
+    info: Executing 'no timeout' ... '/sbin/chkconfig sshd --level 6 off'
+    info: Completed execution of '/sbin/chkconfig sshd --level 6 off'
+
+[root@hub masterfiles]# chkconfig --list sshd
+sshd           	0:off	1:off	2:off	3:on	4:off	5:on	6:off
+
+[root@hub masterfiles]# chkconfig --list cfengine3
+cfengine3      	0:off	1:off	2:off	3:on	4:on	5:on	6:off
+#+END_EXAMPLE
+
+* Example output

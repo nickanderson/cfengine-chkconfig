@@ -1,0 +1,125 @@
+bundle agent chkconfig(service, data)
+# @brief Ensure that `service` is configured for `data`
+# @param service The name of the service to manage as found in `chkconfig --list`
+# @param data Data structure or classic array defining the desired state for each runlevels
+#
+# @**Example:**
+# @
+# @```cf3
+# @bundle agent example_chkconfig
+# @{
+# @  vars:
+# @
+# @      "sshd_runlevels"
+# @      data => '
+# @{
+# @      "1":"off",
+# @      "2":"on",
+# @      "3":"on",
+# @      "4":"on",
+# @      "5":"on",
+# @      "6":"off"
+# @}';
+# @
+# @  methods:
+# @
+# @      "Ensure sshd starts and stops at appropriate runlevels"
+# @      usebundle => chkconfig( "sshd", @(sshd_runlevels) );
+# @}
+# @```
+{
+  vars:
+    "managed_runlevels" slist => getindices(data);
+
+  classes:
+
+    # Define classes if the service is already confiured correctly for the given
+    # runlevel.
+
+    "configured_on_runlevel_$(managed_runlevels)"
+      scope => "bundle",
+      expression => returnszero( "$(paths.chkconfig) --level $(managed_runlevels) $(service)", noshell );
+
+    # We like to be explicit about knowing if a service is on or off, this
+    # could be considered overkill.
+
+    "configured_off_runlevel_$(managed_runlevels)"
+      scope => "bundle",
+      expression => not( returnszero( "$(paths.chkconfig) --level $(managed_runlevels) $(service)", noshell ) );
+
+  commands:
+    # Ensure the service is configured to start on runlevel 3
+    # using paths bundle from stdlib
+    "$(paths.chkconfig)"
+      args => "$(service) --level $(managed_runlevels) $(data[$(managed_runlevels)])",
+      unless => "configured_$(data[$(managed_runlevels)])_runlevel_$(managed_runlevels)";
+}
+
+bundle agent bulk_chkconfig(data)
+# @brief Ensure that `service` is configured for `data`
+# @param service The name of the service to manage as found in `chkconfig --list`
+# @param data Data structure or classic array defining the desired state for each runlevels
+#
+# @**Example:**
+# @
+# @```cf3
+# @bundle agent example_bulk_chkconfig
+# @{
+# @  vars:
+# @
+# @      "bulk_chkconfig" data => '
+# @[
+# @      {
+# @        "name":"cfengine3",
+# @        "runlevel_1":"off",
+# @        "runlevel_2":"off",
+# @        "runlevel_3":"on",
+# @        "runlevel_4":"on",
+# @        "runlevel_5":"on",
+# @        "runlevel_6":"off"
+# @      },
+# @      {
+# @        "name":"sshd",
+# @        "runlevel_1":"off",
+# @        "runlevel_2":"off",
+# @        "runlevel_3":"off",
+# @        "runlevel_4":"off",
+# @        "runlevel_5":"off",
+# @        "runlevel_6":"off"
+# @      }
+# @]';
+# @
+# @  methods:
+# @
+# @      "Ensure various services start and stop at appropriate runlevels"
+# @      usebundle => bulk_chkconfig( @(bulk_chkconfig) );
+# @}
+# @```
+{
+  vars:
+    "runlevels" slist => { "0", "1", "2", "3", "4", "5", "6" };
+    "managed_services" slist => getindices(data);
+
+  classes:
+
+    # Define classes if the service is already confiured correctly for the given
+    # runlevel.
+
+    "configured_$(managed_services)_on_runlevel_$(runlevels)"
+      scope => "bundle",
+      expression => returnszero( "$(paths.chkconfig) $(data[$(managed_services)][name]) --level $(runlevels)", noshell );
+
+    # We like to be explicit about knowing if a service is on or off, this
+    # could be considered overkill.
+
+    "configured_$(managed_services)_off_runlevel_$(runlevels)"
+      scope => "bundle",
+      expression => not( returnszero( "$(paths.chkconfig) $(data[$(managed_services)][name]) --level $(runlevels)", noshell ) );
+
+  commands:
+    # Ensure the service is configured to start on runlevel 3
+    # using paths bundle from stdlib
+    "$(paths.chkconfig)"
+      args => "$(data[$(managed_services)][name]) --level $(runlevels) $(data[$(managed_services)][runlevel_$(runlevels)])",
+      unless => "configured_$(managed_services)_$(data[$(managed_services)][runlevel_$(runlevels)])_runlevel_$(runlevels)";
+}
